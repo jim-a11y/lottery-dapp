@@ -1,0 +1,33 @@
+{
+  "name": "lottery-dapp",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "preinstall": "npx npm-force-resolutions",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.2.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5",
+    "express": "^4.21.2",
+    "ws": "^8.0.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.17",
+    "npm-force-resolutions": "^0.0.10"
+  },
+  "overrides": {
+    "glob": "11.0.0",
+    "inflight": "^1.0.6"
+  },
+  "resolutions": {
+    "cookie": ">=0.7.0",
+    "elliptic": ">=6.5.8"
+  }
+}
