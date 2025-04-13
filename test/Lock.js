@@ -87,10 +87,21 @@ describe("Lock", function () {
           deployOneYearLockFixture
         );
 
-        // Transactions are sent using the first signer by default
-        await time.increaseTo(unlockTime);
-
-        await expect(lock.withdraw()).not.to.be.reverted;
+        describe("Withdrawals", function () {
+          it("Shouldn't fail if the unlockTime has arrived and the owner calls it", async function () {
+              const { lock, unlockTime } = await loadFixture(deployOneYearLockFixture);
+      
+              // 1️⃣ **增加時間**
+              await time.increaseTo(unlockTime);
+      
+              // 2️⃣ **確保區塊時間正確**
+              const currentBlock = await ethers.provider.getBlock("latest");
+              expect(currentBlock.timestamp).to.be.at.least(unlockTime);
+      
+              // 3️⃣ **執行提款**
+              await expect(lock.withdraw()).not.to.be.reverted;
+          });
+      });
       });
     });
 
@@ -103,24 +114,29 @@ describe("Lock", function () {
         await time.increaseTo(unlockTime);
 
         await expect(lock.withdraw())
-          .to.emit(lock, "Withdrawal")
-          .withArgs(lockedAmount, anyValue); // We accept any value as `when` arg
+        .to.emit(lock, "Withdrawal")
+        .withArgs(lockedAmount, (when) => when > 0); // We accept any value as `when` arg
       });
     });
 
     describe("Transfers", function () {
       it("Should transfer the funds to the owner", async function () {
-        const { lock, unlockTime, lockedAmount, owner } = await loadFixture(
-          deployOneYearLockFixture
-        );
-
-        await time.increaseTo(unlockTime);
-
-        await expect(lock.withdraw()).to.changeEtherBalances(
-          [owner, lock],
-          [lockedAmount, -lockedAmount]
-        );
+          const { lock, unlockTime, lockedAmount, owner } = await loadFixture(deployOneYearLockFixture);
+  
+          await time.increaseTo(unlockTime);
+  
+          // 1️⃣ **記錄提款前的餘額**
+          const beforeBalance = await ethers.provider.getBalance(owner.address);
+  
+          await expect(lock.withdraw())
+              .to.changeEtherBalances([owner, lock], [lockedAmount, -lockedAmount]);
+  
+          // 2️⃣ **記錄提款後的餘額**
+          const afterBalance = await ethers.provider.getBalance(owner.address);
+  
+          // 3️⃣ **檢查 owner 的餘額是否確實增加**
+          expect(afterBalance).to.be.above(beforeBalance);
+      });
       });
     });
   });
-});
