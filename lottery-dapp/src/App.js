@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { BrowserProvider, Contract, parseEther } from "ethers";
+import { BrowserProvider, Contract, parseEther, formatEther } from "ethers";
 import DiceGameABI from "./abis/Dicegame.json"; // 正確引入 ABI
 
 const CONTRACT_ADDRESS = process.env.REACT_APP_CONTRACT_ADDRESS;
@@ -12,6 +12,9 @@ function App() {
   const [selectedBets, setSelectedBets] = useState([]);
   const [message, setMessage] = useState("");
   const [potentialPayout, setPotentialPayout] = useState(null);
+  const [balance, setBalance] = useState(null);
+  const [rolling, setRolling] = useState(false);
+  const [diceNumber, setDiceNumber] = useState(null);
 
   const showMessage = (text, duration = 2000) => {
     setMessage(text);
@@ -24,11 +27,26 @@ function App() {
     const accounts = await provider.send("eth_requestAccounts", []);
     setAccount(accounts[0]);
     showMessage("✅ 錢包已連接");
+    fetchBalance(accounts[0]);
   };
 
   const disconnectWallet = () => {
     setAccount("");
+    setBalance(null);
     showMessage("👋 錢包已斷開連接");
+  };
+
+  const fetchBalance = async (address) => {
+    try {
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new Contract(CONTRACT_ADDRESS, DiceGameABI, signer);
+      const bal = await contract.balances(address);
+      setBalance(parseFloat(formatEther(bal)).toFixed(4));
+    } catch (err) {
+      console.error(err);
+      showMessage("❌ 查詢餘額失敗");
+    }
   };
 
   const handleDeposit = async () => {
@@ -39,6 +57,7 @@ function App() {
       const tx = await contract.deposit({ value: parseEther(depositAmount) });
       await tx.wait();
       showMessage(`✅ 成功儲值 ${depositAmount} ETH`);
+      fetchBalance(account);
     } catch (err) {
       console.error(err);
       showMessage("❌ 儲值失敗");
@@ -53,11 +72,21 @@ function App() {
       const tx = await contract.withdraw(parseEther(depositAmount));
       await tx.wait();
       showMessage("✅ 提款成功");
+      fetchBalance(account);
     } catch (err) {
       console.error(err);
       showMessage("❌ 提款失敗");
     }
   };
+
+  const getBetOptions = () => ({
+    red: selectedBets.includes("紅"),
+    black: selectedBets.includes("黑"),
+    big: selectedBets.includes("大"),
+    small: selectedBets.includes("小"),
+    odd: selectedBets.includes("單"),
+    even: selectedBets.includes("雙"),
+  });
 
   const handleBet = async () => {
     try {
@@ -77,16 +106,28 @@ function App() {
         options.even
       );
       await tx.wait();
-      showMessage("🎲 下注成功，等待結果...");
+      showMessage("🎲 下注成功，開始擲骰...");
 
-      // 這裡新增監聽 DiceRolled 事件
+      // 播放骰子動畫
+      setRolling(true);
+      let rollInterval = setInterval(() => {
+        setDiceNumber(Math.floor(Math.random() * 6) + 1);
+      }, 100);
+
       contract.once("DiceRolled", (player, result, win, payout) => {
         if (player.toLowerCase() === account.toLowerCase()) {
-          if (win) {
-            showMessage(`🎉 恭喜！擲出點數 ${result}，贏得 ${parseFloat(payout.toString()) / 1e18} ETH`);
-          } else {
-            showMessage(`😢 擲出點數 ${result}，很遺憾沒有中獎`);
-          }
+          setTimeout(() => {
+            clearInterval(rollInterval);
+            setRolling(false);
+            setDiceNumber(result);
+
+            if (win) {
+              showMessage(`🎉 恭喜！擲出 ${result} 點，贏得 ${parseFloat(payout.toString()) / 1e18} ETH`);
+            } else {
+              showMessage(`😢 擲出 ${result} 點，很遺憾沒有中獎`);
+            }
+            fetchBalance(account);
+          }, 2000);
         }
       });
     } catch (err) {
@@ -119,15 +160,6 @@ function App() {
     }
   };
 
-  const getBetOptions = () => ({
-    red: selectedBets.includes("紅"),
-    black: selectedBets.includes("黑"),
-    big: selectedBets.includes("大"),
-    small: selectedBets.includes("小"),
-    odd: selectedBets.includes("單"),
-    even: selectedBets.includes("雙"),
-  });
-
   const toggleBetOption = (option) => {
     const mutuallyExclusive = {
       紅: "黑",
@@ -154,7 +186,7 @@ function App() {
 
   return (
     <div className="container text-center mt-5">
-      <h1 className="text-primary">🎲 樂透 DApp</h1>
+      <h1 className="text-primary">🎲 擲骰 DApp</h1>
 
       {account ? (
         <div className="mt-3">
@@ -162,6 +194,9 @@ function App() {
             已連接: {account.slice(0, 6)}...{account.slice(-4)}
           </span>
           <button className="btn btn-outline-danger btn-sm" onClick={disconnectWallet}>取消連接</button>
+          <div className="mt-2">
+            餘額: {balance !== null ? <strong>{balance} ETH</strong> : "讀取中..."}
+          </div>
         </div>
       ) : (
         <button className="btn btn-success mt-3" onClick={connectWallet}>連接錢包</button>
@@ -173,7 +208,7 @@ function App() {
       <div className="mt-4">
         <input
           type="number"
-          placeholder="儲值金額 (ETH)"
+          placeholder="儲值/提款金額 (ETH)"
           className="form-control my-2"
           value={depositAmount}
           onChange={(e) => setDepositAmount(e.target.value)}
@@ -209,6 +244,27 @@ function App() {
             🎯 預期獎金：<strong>{potentialPayout} ETH</strong>
           </div>
         )}
+      </div>
+
+      {/* 骰子動畫 */}
+      <div className="mt-5">
+        {diceNumber && (
+          <div
+            style={{
+              fontSize: "80px",
+              width: "100px",
+              height: "100px",
+              lineHeight: "100px",
+              margin: "0 auto",
+              border: "5px solid black",
+              borderRadius: "20px",
+              backgroundColor: "#fff",
+            }}
+          >
+            {diceNumber}
+          </div>
+        )}
+        {rolling && <div className="text-warning mt-2">🎲 擲骰中...</div>}
       </div>
     </div>
   );
