@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { BrowserProvider, Contract, parseEther } from "ethers";
+import { BrowserProvider, Contract, parseEther, formatEther } from "ethers";
 import DiceGameABI from "./abis/Dicegame.json";
 
 const CONTRACT_ADDRESS = process.env.REACT_APP_CONTRACT_ADDRESS;
@@ -11,7 +11,6 @@ function App() {
   const [betAmount, setBetAmount] = useState("");
   const [selectedBets, setSelectedBets] = useState([]);
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const provider = window.ethereum ? new BrowserProvider(window.ethereum) : null;
 
@@ -39,8 +38,8 @@ function App() {
 
   const handleDeposit = async () => {
     if (!depositAmount || isNaN(depositAmount)) return showMessage("請輸入正確金額");
+
     try {
-      setLoading(true);
       const signer = await provider.getSigner();
       const contract = new Contract(CONTRACT_ADDRESS, DiceGameABI, signer);
       const tx = await contract.deposit({ value: parseEther(depositAmount) });
@@ -50,15 +49,13 @@ function App() {
     } catch (err) {
       console.error(err);
       showMessage("❌ 儲值失敗");
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleWithdraw = async () => {
     if (!depositAmount || isNaN(depositAmount)) return showMessage("請輸入正確金額");
+
     try {
-      setLoading(true);
       const signer = await provider.getSigner();
       const contract = new Contract(CONTRACT_ADDRESS, DiceGameABI, signer);
       const tx = await contract.withdraw(parseEther(depositAmount));
@@ -68,8 +65,6 @@ function App() {
     } catch (err) {
       console.error(err);
       showMessage("❌ 提款失敗");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -84,11 +79,12 @@ function App() {
 
   const handleBet = async () => {
     if (!betAmount || isNaN(betAmount)) return showMessage("請輸入正確下注金額");
+
     try {
-      setLoading(true);
       const signer = await provider.getSigner();
       const contract = new Contract(CONTRACT_ADDRESS, DiceGameABI, signer);
       const options = getBetOptions();
+
       const tx = await contract.placeBet(
         parseEther(betAmount),
         options.red,
@@ -99,13 +95,21 @@ function App() {
         options.even
       );
       await tx.wait();
-      showMessage("🎲 下注完成！");
-      setBetAmount("");
+      showMessage("🎲 下注成功，等待結果...");
+
+      // 接收擲骰結果
+      contract.once("DiceRolled", (player, result, win, payout) => {
+        if (player.toLowerCase() === account.toLowerCase()) {
+          if (win) {
+            showMessage(`🎉 擲出 ${result} 點，贏得 ${formatEther(payout)} ETH`);
+          } else {
+            showMessage(`😢 擲出 ${result} 點，沒有中獎`);
+          }
+        }
+      });
     } catch (err) {
       console.error(err);
       showMessage("❌ 下注失敗");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -139,7 +143,6 @@ function App() {
       )}
 
       {message && <div className="alert alert-info mt-3">{message}</div>}
-      {loading && <div className="spinner-border text-primary mt-3" role="status"></div>}
 
       {/* 儲值/提款 */}
       <div className="mt-4">
@@ -150,10 +153,9 @@ function App() {
           className="form-control my-2"
           value={depositAmount}
           onChange={(e) => setDepositAmount(e.target.value)}
-          disabled={loading}
         />
-        <button className="btn btn-primary" onClick={handleDeposit} disabled={loading}>儲值</button>
-        <button className="btn btn-warning mx-2" onClick={handleWithdraw} disabled={loading}>提款</button>
+        <button className="btn btn-primary" onClick={handleDeposit}>儲值</button>
+        <button className="btn btn-warning mx-2" onClick={handleWithdraw}>提款</button>
       </div>
 
       {/* 下注 */}
@@ -165,7 +167,6 @@ function App() {
           className="form-control my-2"
           value={betAmount}
           onChange={(e) => setBetAmount(e.target.value)}
-          disabled={loading}
         />
         <div className="my-2">
           {["紅", "黑", "大", "小", "單", "雙"].map((option) => (
@@ -173,13 +174,12 @@ function App() {
               key={option}
               className={`btn m-1 ${selectedBets.includes(option) ? "btn-warning" : "btn-outline-warning"}`}
               onClick={() => toggleBetOption(option)}
-              disabled={loading}
             >
               {option}
             </button>
           ))}
         </div>
-        <button className="btn btn-danger" onClick={handleBet} disabled={loading}>下注</button>
+        <button className="btn btn-danger" onClick={handleBet}>開始擲骰</button>
       </div>
     </div>
   );
