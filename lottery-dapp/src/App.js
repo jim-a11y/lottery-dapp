@@ -31,14 +31,8 @@ function App() {
     }
   };
 
-  const disconnectWallet = () => {
-    setAccount("");
-    showMessage("👋 錢包已斷開連接");
-  };
-
   const handleDeposit = async () => {
     if (!depositAmount || isNaN(depositAmount)) return showMessage("請輸入正確金額");
-
     try {
       const signer = await provider.getSigner();
       const contract = new Contract(CONTRACT_ADDRESS, DiceGameABI, signer);
@@ -54,7 +48,6 @@ function App() {
 
   const handleWithdraw = async () => {
     if (!depositAmount || isNaN(depositAmount)) return showMessage("請輸入正確金額");
-
     try {
       const signer = await provider.getSigner();
       const contract = new Contract(CONTRACT_ADDRESS, DiceGameABI, signer);
@@ -79,12 +72,23 @@ function App() {
 
   const handleBet = async () => {
     if (!betAmount || isNaN(betAmount)) return showMessage("請輸入正確下注金額");
-
     try {
       const signer = await provider.getSigner();
       const contract = new Contract(CONTRACT_ADDRESS, DiceGameABI, signer);
       const options = getBetOptions();
 
+      // 先監聽事件
+      contract.once("DiceRolled", (player, result, win, payout) => {
+        if (player.toLowerCase() === account.toLowerCase()) {
+          if (win) {
+            showMessage(`🎉 擲出 ${result} 點，贏得 ${formatEther(payout)} ETH`);
+          } else {
+            showMessage(`😢 擲出 ${result} 點，沒有中獎`);
+          }
+        }
+      });
+
+      // 再送出交易
       const tx = await contract.placeBet(
         parseEther(betAmount),
         options.red,
@@ -97,16 +101,6 @@ function App() {
       await tx.wait();
       showMessage("🎲 下注成功，等待結果...");
 
-      // 接收擲骰結果
-      contract.once("DiceRolled", (player, result, win, payout) => {
-        if (player.toLowerCase() === account.toLowerCase()) {
-          if (win) {
-            showMessage(`🎉 擲出 ${result} 點，贏得 ${formatEther(payout)} ETH`);
-          } else {
-            showMessage(`😢 擲出 ${result} 點，沒有中獎`);
-          }
-        }
-      });
     } catch (err) {
       console.error(err);
       showMessage("❌ 下注失敗");
@@ -135,7 +129,7 @@ function App() {
         <>
           <div className="mt-3">
             <span className="me-2 text-success">已連接: {account.slice(0, 6)}...{account.slice(-4)}</span>
-            <button className="btn btn-outline-danger btn-sm" onClick={disconnectWallet}>取消連接</button>
+            <button className="btn btn-outline-danger btn-sm" onClick={() => setAccount("")}>取消連接</button>
           </div>
         </>
       ) : (
@@ -148,7 +142,6 @@ function App() {
       <div className="mt-4">
         <input
           type="number"
-          step="any"
           placeholder="儲值/提款金額 (ETH)"
           className="form-control my-2"
           value={depositAmount}
@@ -162,7 +155,6 @@ function App() {
       <div className="mt-4">
         <input
           type="number"
-          step="any"
           placeholder="下注金額 (ETH)"
           className="form-control my-2"
           value={betAmount}
