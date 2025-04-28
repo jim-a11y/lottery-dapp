@@ -60,6 +60,13 @@
      "type": "event"
     },
     {
+     "inputs": [],
+     "name": "deposit",
+     "outputs": [],
+     "stateMutability": "payable",
+     "type": "function"
+    },
+    {
      "anonymous": false,
      "inputs": [
       {
@@ -110,6 +117,62 @@
      "type": "event"
     },
     {
+     "inputs": [
+      {
+       "internalType": "uint256",
+       "name": "amount",
+       "type": "uint256"
+      },
+      {
+       "internalType": "bool",
+       "name": "red",
+       "type": "bool"
+      },
+      {
+       "internalType": "bool",
+       "name": "black",
+       "type": "bool"
+      },
+      {
+       "internalType": "bool",
+       "name": "big",
+       "type": "bool"
+      },
+      {
+       "internalType": "bool",
+       "name": "small",
+       "type": "bool"
+      },
+      {
+       "internalType": "bool",
+       "name": "odd",
+       "type": "bool"
+      },
+      {
+       "internalType": "bool",
+       "name": "even",
+       "type": "bool"
+      }
+     ],
+     "name": "placeBet",
+     "outputs": [],
+     "stateMutability": "nonpayable",
+     "type": "function"
+    },
+    {
+     "inputs": [
+      {
+       "internalType": "uint256",
+       "name": "amount",
+       "type": "uint256"
+      }
+     ],
+     "name": "withdraw",
+     "outputs": [],
+     "stateMutability": "nonpayable",
+     "type": "function"
+    },
+    {
      "anonymous": false,
      "inputs": [
       {
@@ -145,13 +208,6 @@
       }
      ],
      "stateMutability": "view",
-     "type": "function"
-    },
-    {
-     "inputs": [],
-     "name": "deposit",
-     "outputs": [],
-     "stateMutability": "payable",
      "type": "function"
     },
     {
@@ -214,62 +270,6 @@
       }
      ],
      "stateMutability": "view",
-     "type": "function"
-    },
-    {
-     "inputs": [
-      {
-       "internalType": "uint256",
-       "name": "amount",
-       "type": "uint256"
-      },
-      {
-       "internalType": "bool",
-       "name": "red",
-       "type": "bool"
-      },
-      {
-       "internalType": "bool",
-       "name": "black",
-       "type": "bool"
-      },
-      {
-       "internalType": "bool",
-       "name": "big",
-       "type": "bool"
-      },
-      {
-       "internalType": "bool",
-       "name": "small",
-       "type": "bool"
-      },
-      {
-       "internalType": "bool",
-       "name": "odd",
-       "type": "bool"
-      },
-      {
-       "internalType": "bool",
-       "name": "even",
-       "type": "bool"
-      }
-     ],
-     "name": "placeBet",
-     "outputs": [],
-     "stateMutability": "nonpayable",
-     "type": "function"
-    },
-    {
-     "inputs": [
-      {
-       "internalType": "uint256",
-       "name": "amount",
-       "type": "uint256"
-      }
-     ],
-     "name": "withdraw",
-     "outputs": [],
-     "stateMutability": "nonpayable",
      "type": "function"
     }
    ]

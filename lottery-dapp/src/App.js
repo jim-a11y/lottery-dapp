@@ -5,6 +5,7 @@ import DiceGameABI from "./abis/Dicegame.json";
 
 const CONTRACT_ADDRESS = process.env.REACT_APP_CONTRACT_ADDRESS;
 
+
 function App() {
   const [account, setAccount] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
