@@ -5,7 +5,6 @@ import DiceGameABI from "./abis/Dicegame.json";
 
 const CONTRACT_ADDRESS = process.env.REACT_APP_CONTRACT_ADDRESS;
 
-
 function App() {
   const [account, setAccount] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
@@ -132,20 +131,20 @@ function App() {
         setDiceNumber(Math.floor(Math.random() * 6) + 1);
       }, 100);
 
+      // 使用 once 來監聽事件
       contract.once("DiceRolled", (player, result, win, payout) => {
         if (player.toLowerCase() === account.toLowerCase()) {
-          setTimeout(() => {
-            clearInterval(rollInterval);
-            setRolling(false);
-            setDiceNumber(result);
+          // 停止骰子動畫並更新結果
+          clearInterval(rollInterval);
+          setRolling(false);
+          setDiceNumber(result); // 更新骰子數字
 
-            if (win) {
-              showMessage(`🎉 擲出 ${result} 點，贏得 ${formatEther(payout)} ETH`);
-            } else {
-              showMessage(`😢 擲出 ${result} 點，沒有中獎`);
-            }
-            fetchBalance(account);
-          }, 2000);
+          if (win) {
+            showMessage(`🎉 擲出 ${result} 點，贏得 ${formatEther(payout)} ETH`);
+          } else {
+            showMessage(`😢 擲出 ${result} 點，沒有中獎`);
+          }
+          fetchBalance(account); // 更新餘額
         }
       });
     } catch (err) {
@@ -217,7 +216,7 @@ function App() {
       <div className="mt-4">
         <input
           type="number"
-          step="0.0001"
+          step="any"
           placeholder="儲值/提款金額 (ETH)"
           className="form-control my-2"
           value={depositAmount}
@@ -232,7 +231,7 @@ function App() {
       <div className="mt-4">
         <input
           type="number"
-          step="0.0001"
+          step="any"
           placeholder="下注金額 (ETH)"
           className="form-control my-2"
           value={betAmount}
@@ -251,33 +250,18 @@ function App() {
             </button>
           ))}
         </div>
-        <button className="btn btn-danger" onClick={handleBet} disabled={loading}>開始擲骰</button>
-        <button className="btn btn-info ms-2" onClick={previewPayout} disabled={loading}>預覽可贏金額</button>
-        {potentialPayout !== null && (
-          <div className="mt-3 text-success">🎯 預期獎金：<strong>{potentialPayout} ETH</strong></div>
-        )}
+        <button className="btn btn-primary" onClick={handleBet} disabled={loading}>下注</button>
+        <button className="btn btn-secondary mx-2" onClick={previewPayout} disabled={loading}>預覽獎金</button>
+        {potentialPayout !== null && <div className="mt-2">預計獎金: {potentialPayout} ETH</div>}
       </div>
 
       {/* 骰子動畫 */}
-      <div className="mt-5">
-        {diceNumber && (
-          <div
-            style={{
-              fontSize: "80px",
-              width: "100px",
-              height: "100px",
-              lineHeight: "100px",
-              margin: "0 auto",
-              border: "5px solid black",
-              borderRadius: "20px",
-              backgroundColor: "#fff",
-            }}
-          >
-            {diceNumber}
-          </div>
-        )}
-        {rolling && <div className="text-warning mt-2">🎲 擲骰中...</div>}
-      </div>
+      {rolling && (
+        <div className="mt-4">
+          <h2>擲骰中...</h2>
+          <div style={{ fontSize: "100px" }}>{diceNumber}</div>
+        </div>
+      )}
     </div>
   );
 }
