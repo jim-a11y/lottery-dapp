@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { BrowserProvider, Contract, parseEther, formatEther } from "ethers";
+import { BrowserProvider, Contract, parseEther } from "ethers";
 import DiceGameABI from "./abis/Dicegame.json";
 
 const CONTRACT_ADDRESS = process.env.REACT_APP_CONTRACT_ADDRESS;
@@ -11,10 +11,6 @@ function App() {
   const [betAmount, setBetAmount] = useState("");
   const [selectedBets, setSelectedBets] = useState([]);
   const [message, setMessage] = useState("");
-  const [potentialPayout, setPotentialPayout] = useState(null);
-  const [balance, setBalance] = useState(null);
-  const [rolling, setRolling] = useState(false);
-  const [diceNumber, setDiceNumber] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const provider = window.ethereum ? new BrowserProvider(window.ethereum) : null;
@@ -30,7 +26,6 @@ function App() {
       const accounts = await provider.send("eth_requestAccounts", []);
       setAccount(accounts[0]);
       showMessage("✅ 錢包已連接");
-      fetchBalance(accounts[0]);
     } catch (err) {
       console.error(err);
       showMessage("❌ 錢包連接失敗");
@@ -39,25 +34,11 @@ function App() {
 
   const disconnectWallet = () => {
     setAccount("");
-    setBalance(null);
     showMessage("👋 錢包已斷開連接");
-  };
-
-  const fetchBalance = async (address) => {
-    try {
-      const signer = await provider.getSigner();
-      const contract = new Contract(CONTRACT_ADDRESS, DiceGameABI, signer);
-      const bal = await contract.balances(address);
-      setBalance(parseFloat(formatEther(bal)).toFixed(4));
-    } catch (err) {
-      console.error(err);
-      showMessage("❌ 查詢餘額失敗");
-    }
   };
 
   const handleDeposit = async () => {
     if (!depositAmount || isNaN(depositAmount)) return showMessage("請輸入正確金額");
-
     try {
       setLoading(true);
       const signer = await provider.getSigner();
@@ -65,7 +46,6 @@ function App() {
       const tx = await contract.deposit({ value: parseEther(depositAmount) });
       await tx.wait();
       showMessage(`✅ 成功儲值 ${depositAmount} ETH`);
-      fetchBalance(account);
       setDepositAmount("");
     } catch (err) {
       console.error(err);
@@ -77,7 +57,6 @@ function App() {
 
   const handleWithdraw = async () => {
     if (!depositAmount || isNaN(depositAmount)) return showMessage("請輸入正確金額");
-
     try {
       setLoading(true);
       const signer = await provider.getSigner();
@@ -85,7 +64,6 @@ function App() {
       const tx = await contract.withdraw(parseEther(depositAmount));
       await tx.wait();
       showMessage("✅ 提款成功");
-      fetchBalance(account);
       setDepositAmount("");
     } catch (err) {
       console.error(err);
@@ -106,13 +84,11 @@ function App() {
 
   const handleBet = async () => {
     if (!betAmount || isNaN(betAmount)) return showMessage("請輸入正確下注金額");
-
     try {
       setLoading(true);
       const signer = await provider.getSigner();
       const contract = new Contract(CONTRACT_ADDRESS, DiceGameABI, signer);
       const options = getBetOptions();
-
       const tx = await contract.placeBet(
         parseEther(betAmount),
         options.red,
@@ -123,59 +99,13 @@ function App() {
         options.even
       );
       await tx.wait();
-      showMessage("🎲 下注成功，開始擲骰...");
-
-      // 骰子動畫
-      setRolling(true);
-      let rollInterval = setInterval(() => {
-        setDiceNumber(Math.floor(Math.random() * 6) + 1);
-      }, 100);
-
-      // 使用 once 來監聽事件
-      contract.once("DiceRolled", (player, result, win, payout) => {
-        if (player.toLowerCase() === account.toLowerCase()) {
-          // 停止骰子動畫並更新結果
-          clearInterval(rollInterval);
-          setRolling(false);
-          setDiceNumber(result); // 更新骰子數字
-
-          if (win) {
-            showMessage(`🎉 擲出 ${result} 點，贏得 ${formatEther(payout)} ETH`);
-          } else {
-            showMessage(`😢 擲出 ${result} 點，沒有中獎`);
-          }
-          fetchBalance(account); // 更新餘額
-        }
-      });
+      showMessage("🎲 下注完成！");
+      setBetAmount("");
     } catch (err) {
       console.error(err);
       showMessage("❌ 下注失敗");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const previewPayout = async () => {
-    if (!betAmount || isNaN(betAmount)) return showMessage("請輸入正確下注金額");
-
-    try {
-      const signer = await provider.getSigner();
-      const contract = new Contract(CONTRACT_ADDRESS, DiceGameABI, signer);
-      const options = getBetOptions();
-
-      const payout = await contract.getPotentialPayout(
-        parseEther(betAmount),
-        options.red,
-        options.black,
-        options.big,
-        options.small,
-        options.odd,
-        options.even
-      );
-      setPotentialPayout(parseFloat(formatEther(payout)).toFixed(4));
-    } catch (err) {
-      console.error(err);
-      showMessage("❌ 預覽失敗");
     }
   };
 
@@ -203,7 +133,6 @@ function App() {
             <span className="me-2 text-success">已連接: {account.slice(0, 6)}...{account.slice(-4)}</span>
             <button className="btn btn-outline-danger btn-sm" onClick={disconnectWallet}>取消連接</button>
           </div>
-          <div className="mt-2">餘額: {balance !== null ? <strong>{balance} ETH</strong> : "讀取中..."}</div>
         </>
       ) : (
         <button className="btn btn-success mt-3" onClick={connectWallet}>連接錢包</button>
@@ -250,18 +179,8 @@ function App() {
             </button>
           ))}
         </div>
-        <button className="btn btn-primary" onClick={handleBet} disabled={loading}>下注</button>
-        <button className="btn btn-secondary mx-2" onClick={previewPayout} disabled={loading}>預覽獎金</button>
-        {potentialPayout !== null && <div className="mt-2">預計獎金: {potentialPayout} ETH</div>}
+        <button className="btn btn-danger" onClick={handleBet} disabled={loading}>下注</button>
       </div>
-
-      {/* 骰子動畫 */}
-      {rolling && (
-        <div className="mt-4">
-          <h2>擲骰中...</h2>
-          <div style={{ fontSize: "100px" }}>{diceNumber}</div>
-        </div>
-      )}
     </div>
   );
 }
