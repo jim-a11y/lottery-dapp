@@ -216,7 +216,7 @@ function App() {
       <div className="mt-4">
         <input
           type="number"
-          step="any"
+          step="0.0001"
           placeholder="儲值/提款金額 (ETH)"
           className="form-control my-2"
           value={depositAmount}
@@ -231,7 +231,7 @@ function App() {
       <div className="mt-4">
         <input
           type="number"
-          step="any"
+          step="0.0001"
           placeholder="下注金額 (ETH)"
           className="form-control my-2"
           value={betAmount}
